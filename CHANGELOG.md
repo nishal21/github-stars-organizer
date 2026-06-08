@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.1] - 2026-06-08
+
+### Fixed
+
+- Clear error when `categorization-plan.json` is missing (instead of traceback)
+- Release workflow: `skip-existing: true` so re-running a tag does not fail
+
+### Docs
+
+- Windows PATH note for `pip install` (`python -m stars_organizer` fallback)
+
 ## [0.2.0] - 2026-06-08
 
 ### Added
