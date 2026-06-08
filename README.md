@@ -120,16 +120,42 @@ organize-stars plan --config config.toml --llm          # optional AI mode
 organize-stars apply [--config config.toml] [--plan plan.json] [--dry-run] [--yes] [--resume]
 ```
 
-## Optional LLM mode
+## Optional AI mode (multi-provider)
 
-For smarter categorization, add a `[llm]` section to `config.toml` and install the extra:
+Install the LLM extra:
 
 ```bash
 uv sync --extra llm
-organize-stars plan --config config.toml --llm
+organize-stars providers    # list all supported providers
 ```
 
-Heuristic mode remains the default — no API key required.
+Add to `config.toml` (see `config.example.toml`):
+
+```toml
+[llm]
+provider = "mistral"
+preferences = "I'm a web designer, gamer, and anime fan."
+
+[llm.providers.mistral]
+api_key = "your-mistral-key"
+
+[llm.providers.openai]
+api_key = "sk-..."
+
+[llm.providers.groq]
+api_key = "gsk_..."
+```
+
+Supported providers: **openai**, **mistral**, **groq**, **openrouter**, **google**, **deepseek**, **together**, **fireworks**, **cerebras**.
+
+API keys can also be set via env vars (`MISTRAL_API_KEY`, `OPENAI_API_KEY`, `GROQ_API_KEY`, etc.).
+
+```bash
+organize-stars plan --config config.toml --llm
+organize-stars plan --config config.toml --llm --provider groq
+```
+
+Heuristic mode (no API key) remains the default without `--llm`.
 
 ## Default categories
 

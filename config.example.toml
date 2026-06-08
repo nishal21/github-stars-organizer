@@ -1,17 +1,57 @@
 [github]
 username = "your-github-username"
-token = "ghp_xxxx"           # Personal access token (classic)
+token = "ghp_xxxx"
 
 [github.session]
-# DevTools → Network → any github.com request → Headers → Cookie (full string)
 cookies = "_octo=...; user_session=...; logged_in=yes; ..."
 
 concurrency = 5
 
-# Optional: enable LLM categorization with organize-stars plan --llm
-# Install: uv sync --extra llm
+# --- AI categorization (optional) ---
+# Install: uv sync --extra llm   OR   pip install "github-stars-organizer[llm]"
+# Run: organize-stars plan --config config.toml --llm
+# List providers: organize-stars providers
+
+[llm]
+provider = "mistral"          # active provider (see organize-stars providers)
+concurrency = 3
+# Optional: guide the AI with your interests
+preferences = "I'm a web designer, gamer, and anime fan. Group similar repos together."
+
+# Store API keys per provider — only fill the ones you use.
+# Keys can also come from environment variables (see organize-stars providers).
+
+[llm.providers.mistral]
+api_key = "your-mistral-api-key"
+# model = "mistral-large-latest"   # optional override
+
+[llm.providers.openai]
+api_key = "sk-..."
+
+[llm.providers.groq]
+api_key = "gsk_..."
+
+[llm.providers.openrouter]
+api_key = "sk-or-..."
+
+[llm.providers.google]
+api_key = "AIza..."
+
+[llm.providers.deepseek]
+api_key = "sk-..."
+
+[llm.providers.together]
+api_key = "..."
+
+[llm.providers.fireworks]
+api_key = "..."
+
+[llm.providers.cerebras]
+api_key = "..."
+
+# Legacy single-key format also works:
 # [llm]
-# base_url = "https://api.openai.com/v1"
-# api_key = "sk-xxxx"
+# provider = "openai"
+# api_key = "sk-..."
 # model = "gpt-4o"
-# concurrency = 3
+# base_url = "https://api.openai.com/v1"

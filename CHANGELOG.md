@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.2.2] - 2026-06-08
+
+### Added
+
+- Multi-provider LLM support: OpenAI, Mistral, Groq, OpenRouter, Google Gemini, DeepSeek, Together, Fireworks, Cerebras
+- `[llm.providers.*]` config blocks for multiple API keys in one file
+- Environment variable fallback per provider (`MISTRAL_API_KEY`, etc.)
+- `organize-stars providers` command
+- `organize-stars plan --provider mistral` CLI override
+- `[llm] preferences` — natural-language hints for AI categorization
+- Fetches existing GitHub Star Lists before AI planning (reuses list names)
+
 ## [0.2.1] - 2026-06-08
 
 ### Fixed

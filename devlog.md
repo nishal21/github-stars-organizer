@@ -1,8 +1,9 @@
 # Devlog
 
-## 2026-06-08 — Copied v0.2.0 to D:\Codesss\github-stars-organizer
+## 2026-06-08 — v0.2.2 multi-provider AI
 
-- Synced full v0.2 project from build workspace to repo at `D:\Codesss\github-stars-organizer`
-- Includes: tests, CI, custom categories, resume, init/status/lists, optional LLM
+- Added 9 LLM providers: OpenAI, Mistral, Groq, OpenRouter, Google, DeepSeek, Together, Fireworks, Cerebras
+- `[llm.providers.*]` blocks for multiple API keys; env var fallback per provider
+- `organize-stars providers`, `--provider` flag, `[llm] preferences`
 
-**Next:** `organize-stars init` → `plan` → `apply`; push to `nishal21/github-stars-organizer`; tag `v0.2.0` for PyPI.
+**User setup (Mistral):** Add `[llm] provider = "mistral"` + `[llm.providers.mistral] api_key` → `organize-stars plan --config config.toml --llm`

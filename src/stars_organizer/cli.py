@@ -11,10 +11,11 @@ from rich.console import Console
 
 from .apply import apply_plan
 from .categorize import build_plan, load_categories, merge_categories, save_plan
-from .config import config_status, load_config
+from .config import config_status, load_config, load_llm_config
 from .github_api import fetch_public_starred_repos, fetch_starred_repos
 from .github_web import GitHubWebClient
 from .llm_categorize import categorize_repos_llm, llm_result_to_plan
+from .llm_providers import list_providers
 from .state import DEFAULT_STATE_PATH, ApplyState
 
 console = Console()
@@ -51,12 +52,38 @@ def _cmd_plan(args: argparse.Namespace) -> None:
             if not cfg_path.exists():
                 console.print("[red]--llm requires config.toml with [llm] section.[/red]")
                 sys.exit(1)
-            cfg = load_config(cfg_path)
-            if not cfg.llm:
+
+            import tomllib
+
+            with open(cfg_path, "rb") as f:
+                raw = tomllib.load(f)
+            if "llm" not in raw:
                 console.print("[red]config.toml missing [llm] section.[/red]")
                 sys.exit(1)
+
+            try:
+                llm_cfg = load_llm_config(raw["llm"], provider_override=args.provider)
+            except ValueError as exc:
+                console.print(f"[red]{exc}[/red]")
+                sys.exit(1)
+
+            existing_lists = []
+            if args.config:
+                cfg = load_config(cfg_path)
+                web = GitHubWebClient(cfg.github)
+                try:
+                    existing_lists = await web.get_lists(repos[0])
+                    if existing_lists:
+                        console.print(f"Found {len(existing_lists)} existing Star Lists on GitHub.")
+                except Exception:
+                    console.print(
+                        "[yellow]Could not fetch existing lists; AI will create new ones.[/yellow]"
+                    )
+                finally:
+                    await web.close()
+
             console.print("Categorizing with LLM...")
-            result = await categorize_repos_llm(cfg.llm, repos)
+            result = await categorize_repos_llm(llm_cfg, repos, existing_lists=existing_lists)
             plan = llm_result_to_plan(target_user, result)
         else:
             plan = build_plan(target_user, repos, categories=categories)
@@ -122,6 +149,9 @@ def _cmd_status(args: argparse.Namespace) -> None:
     console.print(f"  Token set: {'yes' if status['has_token'] else 'no'}")
     console.print(f"  Cookies set: {'yes' if status['has_cookies'] else 'no'}")
     console.print(f"  LLM configured: {'yes' if status['has_llm'] else 'no'}")
+    if status["has_llm"]:
+        console.print(f"  LLM provider: {status['llm_provider']}")
+        console.print(f"  LLM model: {status['llm_model']}")
 
     state = ApplyState.load(DEFAULT_STATE_PATH)
     if state:
@@ -156,6 +186,20 @@ def _cmd_lists(args: argparse.Namespace) -> None:
     asyncio.run(run())
 
 
+def _cmd_providers(_args: argparse.Namespace) -> None:
+    console.print("[bold]Supported LLM providers[/bold]\n")
+    for preset in list_providers():
+        console.print(f"  [cyan]{preset.name}[/cyan]")
+        console.print(f"    model: {preset.default_model}")
+        console.print(f"    base_url: {preset.base_url}")
+        console.print(f"    env var: {preset.env_key}")
+        console.print(f"    keys: {preset.docs_url}\n")
+    console.print("Use in config.toml: [bold]provider = \"mistral\"[/bold]")
+    console.print(
+        "Run: [bold]organize-stars plan --config config.toml --llm --provider mistral[/bold]"
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="organize-stars",
@@ -170,6 +214,10 @@ def main() -> None:
     plan_parser.add_argument("--categories", help="Custom categories TOML file")
     plan_parser.add_argument(
         "--llm", action="store_true", help="LLM categorization (needs [llm] in config)"
+    )
+    plan_parser.add_argument(
+        "--provider",
+        help="LLM provider (mistral, openai, groq, openrouter, google, deepseek, ...)",
     )
     plan_parser.add_argument(
         "--output", default="categorization-plan.json", help="Output plan JSON path"
@@ -196,6 +244,9 @@ def main() -> None:
     lists_parser = subparsers.add_parser("lists", help="List current GitHub Star Lists")
     lists_parser.add_argument("--config", default="config.toml", help="Config file path")
     lists_parser.set_defaults(func=_cmd_lists)
+
+    providers_parser = subparsers.add_parser("providers", help="List supported LLM providers")
+    providers_parser.set_defaults(func=_cmd_providers)
 
     args = parser.parse_args()
     args.func(args)

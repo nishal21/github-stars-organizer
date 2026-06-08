@@ -4,11 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import json
+import re
 from collections.abc import Callable
+
+from rich.console import Console
 
 from .categorize import MAX_LISTS
 from .config import LLMConfig
 from .models import Assignment, CategorizationResult, StarList, StarredRepo
+
+console = Console()
 
 SYSTEM_PROMPT = """You are a GitHub repository organizer. Categorize starred repositories into meaningful Star Lists.
 
@@ -21,6 +26,9 @@ Rules:
 
 USER_PROMPT_TEMPLATE = """Existing star lists:
 {existing_lists}
+
+User preferences:
+{preferences}
 
 Repositories to categorize:
 {repo_summaries}
@@ -46,6 +54,14 @@ def _build_existing_lists(lists: list[StarList]) -> str:
     return "\n".join(f"- {item.name}" for item in lists)
 
 
+def _parse_json_response(content: str) -> dict:
+    text = content.strip()
+    fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
+    if fence:
+        text = fence.group(1).strip()
+    return json.loads(text)
+
+
 async def _categorize_batch(
     client,
     cfg: LLMConfig,
@@ -56,20 +72,33 @@ async def _categorize_batch(
     async with semaphore:
         prompt = USER_PROMPT_TEMPLATE.format(
             existing_lists=_build_existing_lists(existing_lists),
+            preferences=cfg.preferences or "(none)",
             repo_summaries=_build_repo_summaries(batch),
             max_lists=MAX_LISTS,
         )
-        response = await client.chat.completions.create(
-            model=cfg.model,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": prompt},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.3,
-        )
-        content = response.choices[0].message.content or "{}"
-        data = json.loads(content)
+        messages = [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ]
+
+        content = "{}"
+        try:
+            response = await client.chat.completions.create(
+                model=cfg.model,
+                messages=messages,
+                response_format={"type": "json_object"},
+                temperature=0.3,
+            )
+            content = response.choices[0].message.content or "{}"
+        except Exception:
+            response = await client.chat.completions.create(
+                model=cfg.model,
+                messages=messages,
+                temperature=0.3,
+            )
+            content = response.choices[0].message.content or "{}"
+
+        data = _parse_json_response(content)
 
         assignments = [
             Assignment(repo=item["repo"], list_name=item["list"])
@@ -90,6 +119,11 @@ async def categorize_repos_llm(
         raise ImportError(
             "LLM mode requires openai. Install with: uv sync --extra llm"
         ) from exc
+
+    console.print(
+        f"[cyan]LLM provider:[/cyan] {cfg.provider}  "
+        f"[cyan]model:[/cyan] {cfg.model}"
+    )
 
     client = AsyncOpenAI(base_url=cfg.base_url, api_key=cfg.api_key)
     semaphore = asyncio.Semaphore(cfg.concurrency)
@@ -135,6 +169,9 @@ def llm_result_to_plan(username: str, result: CategorizationResult) -> dict:
     return {
         "username": username,
         "total": len(assignments),
-        "lists": {name: len(items) for name, items in sorted(by_list.items(), key=lambda x: -len(x[1]))},
+        "lists": {
+            name: len(items)
+            for name, items in sorted(by_list.items(), key=lambda x: -len(x[1]))
+        },
         "assignments": assignments,
     }
