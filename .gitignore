@@ -1,9 +1,16 @@
 # Secrets
 config.toml
+categories.toml
 *.local.json
 
 # User-generated plans (keep examples/ only)
 categorization-plan.json
+.organize-stars-state.json
+
+# Dev notes (local only)
+devlog.md
+learning-journal.md
+examples/*-sample-plan.json
 
 # Python
 __pycache__/

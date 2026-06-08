@@ -1,18 +1,39 @@
 [project]
 name = "github-stars-organizer"
-version = "0.1.0"
-description = "Organize GitHub starred repos into Star Lists using smart categorization"
+version = "0.2.0"
+description = "Organize GitHub starred repos into Star Lists — free heuristic categorization, optional LLM"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.12"
+authors = [{ name = "Nishal K", email = "nishal21@users.noreply.github.com" }]
+keywords = ["github", "stars", "organize", "cli", "productivity", "developer-tools"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Utilities",
+]
 dependencies = [
     "httpx>=0.27",
     "beautifulsoup4>=4.12",
     "rich>=13.0",
 ]
 
+[project.optional-dependencies]
+llm = ["openai>=1.0"]
+
 [project.scripts]
 organize-stars = "stars_organizer.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/nishal21/github-stars-organizer"
+Repository = "https://github.com/nishal21/github-stars-organizer"
+Issues = "https://github.com/nishal21/github-stars-organizer/issues"
 
 [build-system]
 requires = ["hatchling"]
@@ -20,3 +41,26 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/stars_organizer"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/stars_organizer/categorize.py" = ["E501"]
+"src/stars_organizer/github_web.py" = ["E501"]
+"src/stars_organizer/llm_categorize.py" = ["E501"]

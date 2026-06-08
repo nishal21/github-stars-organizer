@@ -7,3 +7,11 @@ token = "ghp_xxxx"           # Personal access token (classic)
 cookies = "_octo=...; user_session=...; logged_in=yes; ..."
 
 concurrency = 5
+
+# Optional: enable LLM categorization with organize-stars plan --llm
+# Install: uv sync --extra llm
+# [llm]
+# base_url = "https://api.openai.com/v1"
+# api_key = "sk-xxxx"
+# model = "gpt-4o"
+# concurrency = 3

@@ -1,0 +1,15 @@
+# Custom category rules (optional)
+# Copy to categories.toml and run: organize-stars plan --categories categories.toml
+#
+# Patterns use substring matching (case-insensitive via repo text lowercasing).
+# Higher weight = stronger match. Custom categories merge with built-in defaults.
+
+[[category]]
+name = "Anime & APIs"
+patterns = ["anime", "manga", "jikan"]
+weight = 5
+
+[[category]]
+name = "My Dev Tools"
+patterns = ["cursor", "vscode", "neovim", "dotfiles"]
+weight = 3
