@@ -10,7 +10,13 @@ from pathlib import Path
 from rich.console import Console
 
 from .apply import apply_plan
-from .categorize import MAX_LISTS, build_plan, load_categories, merge_categories, save_plan
+from .categorize import (
+    MAX_LISTS,
+    build_plan,
+    load_categories,
+    merge_categories,
+    save_plan,
+)
 from .consolidate import consolidate_plan
 from .config import config_status, load_config, load_llm_config
 from .github_api import fetch_public_starred_repos, fetch_starred_repos
@@ -207,7 +213,10 @@ def _cmd_consolidate(args: argparse.Namespace) -> None:
     before = len(plan.get("lists", {}))
     merged = consolidate_plan(plan, max_lists=MAX_LISTS)
     save_plan(merged, plan_path)
-    console.print(f"[green]Consolidated {before} → {len(merged['lists'])} lists in {plan_path}[/green]")
+    console.print(
+        f"[green]Consolidated {before} → {len(merged['lists'])} lists "
+        f"in {plan_path}[/green]"
+    )
     for name, count in merged["lists"].items():
         console.print(f"  {name}: {count}")
 

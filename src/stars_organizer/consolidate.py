@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import re
 from collections import defaultdict
+import re
 
-from .categorize import MAX_LISTS, DEFAULT_CATEGORY
+from .categorize import DEFAULT_CATEGORY, MAX_LISTS
 
 # Map granular list titles → broad buckets (matched against list name text).
 BROAD_BUCKETS: dict[str, list[str]] = {

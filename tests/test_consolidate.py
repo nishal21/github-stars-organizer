@@ -1,5 +1,9 @@
-from stars_organizer.consolidate import consolidate_assignments, consolidate_plan, map_list_to_broad
 from stars_organizer.categorize import MAX_LISTS
+from stars_organizer.consolidate import (
+    consolidate_assignments,
+    consolidate_plan,
+    map_list_to_broad,
+)
 
 
 def test_map_anime_variants_to_one_bucket():
