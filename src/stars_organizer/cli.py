@@ -10,7 +10,8 @@ from pathlib import Path
 from rich.console import Console
 
 from .apply import apply_plan
-from .categorize import build_plan, load_categories, merge_categories, save_plan
+from .categorize import MAX_LISTS, build_plan, load_categories, merge_categories, save_plan
+from .consolidate import consolidate_plan
 from .config import config_status, load_config, load_llm_config
 from .github_api import fetch_public_starred_repos, fetch_starred_repos
 from .github_web import GitHubWebClient
@@ -87,6 +88,15 @@ def _cmd_plan(args: argparse.Namespace) -> None:
             plan = llm_result_to_plan(target_user, result)
         else:
             plan = build_plan(target_user, repos, categories=categories)
+
+        list_count = len(plan["lists"])
+        if list_count > MAX_LISTS or args.consolidate:
+            before = list_count
+            plan = consolidate_plan(plan, max_lists=MAX_LISTS)
+            console.print(
+                f"[yellow]Consolidated {before} lists → {len(plan['lists'])} "
+                f"(GitHub max is {MAX_LISTS})[/yellow]"
+            )
 
         output = Path(args.output)
         save_plan(plan, output)
@@ -186,6 +196,23 @@ def _cmd_lists(args: argparse.Namespace) -> None:
     asyncio.run(run())
 
 
+def _cmd_consolidate(args: argparse.Namespace) -> None:
+    plan_path = Path(args.plan)
+    if not plan_path.exists():
+        console.print(f"[red]Plan not found: {plan_path}[/red]")
+        sys.exit(1)
+
+    import json
+
+    plan = json.loads(plan_path.read_text(encoding="utf-8"))
+    before = len(plan.get("lists", {}))
+    merged = consolidate_plan(plan, max_lists=MAX_LISTS)
+    save_plan(merged, plan_path)
+    console.print(f"[green]Consolidated {before} → {len(merged['lists'])} lists in {plan_path}[/green]")
+    for name, count in merged["lists"].items():
+        console.print(f"  {name}: {count}")
+
+
 def _cmd_providers(_args: argparse.Namespace) -> None:
     console.print("[bold]Supported LLM providers[/bold]\n")
     for preset in list_providers():
@@ -222,7 +249,20 @@ def main() -> None:
     plan_parser.add_argument(
         "--output", default="categorization-plan.json", help="Output plan JSON path"
     )
+    plan_parser.add_argument(
+        "--consolidate",
+        action="store_true",
+        help="Force-merge lists down to GitHub's 32-list limit",
+    )
     plan_parser.set_defaults(func=_cmd_plan)
+
+    consolidate_parser = subparsers.add_parser(
+        "consolidate", help="Merge an existing plan down to 32 lists"
+    )
+    consolidate_parser.add_argument(
+        "--plan", default="categorization-plan.json", help="Plan JSON to consolidate"
+    )
+    consolidate_parser.set_defaults(func=_cmd_consolidate)
 
     apply_parser = subparsers.add_parser("apply", help="Apply a plan to GitHub Star Lists")
     apply_parser.add_argument("--config", default="config.toml", help="Config file path")

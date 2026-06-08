@@ -1,6 +1,6 @@
 [project]
 name = "github-stars-organizer"
-version = "0.2.2"
+version = "0.2.3"
 description = "Organize GitHub starred repos into Star Lists — free heuristic categorization, optional LLM"
 readme = "README.md"
 license = "MIT"

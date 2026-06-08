@@ -17,12 +17,13 @@ console = Console()
 
 SYSTEM_PROMPT = """You are a GitHub repository organizer. Categorize starred repositories into meaningful Star Lists.
 
-Rules:
-1. Prefer reusing existing list names when appropriate.
-2. Keep the TOTAL number of lists at or below 32 (GitHub hard limit). Use broad categories.
-3. Each repo goes to exactly ONE list (best fit).
-4. List names should be concise (e.g. "AI & LLM", "Web Dev", "DevOps").
-5. Respond ONLY with valid JSON, no markdown fences."""
+CRITICAL RULES:
+1. Use at most 20 broad lists total. NEVER exceed 25. GitHub hard limit is 32.
+2. Use SHORT, BROAD list names only (2-3 words max). Examples: "AI & LLM", "Web Dev", "Anime & Manga", "Dev Tools", "Gaming", "Mobile", "Security", "DevOps", "Media", "Misc".
+3. Do NOT create overlapping or hyper-specific lists (bad: "Anime & Streaming", "Anime Tools", "Android Apps" — good: one "Anime & Manga" list).
+4. Prefer reusing existing list names when provided.
+5. Each repo goes to exactly ONE list.
+6. Respond ONLY with valid JSON, no markdown fences."""
 
 USER_PROMPT_TEMPLATE = """Existing star lists:
 {existing_lists}
@@ -39,7 +40,9 @@ Return JSON:
   "new_lists": ["New List 1"]
 }}
 
-"new_lists" contains only names not in existing lists. Maximum {max_lists} unique lists total."""
+"new_lists" contains only names not in existing lists.
+
+REMINDER: Use at most 20 broad lists. Merge similar topics (all anime → "Anime & Manga", all android → "Mobile")."""
 
 BATCH_SIZE = 80
 
