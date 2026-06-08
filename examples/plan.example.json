@@ -1,0 +1,14 @@
+{
+  "username": "your-github-username",
+  "total": 3,
+  "lists": {
+    "AI & LLM": 1,
+    "Web Dev & Frontend": 1,
+    "Dev Tools & CLI": 1
+  },
+  "assignments": {
+    "openai/openai-python": "AI & LLM",
+    "vercel/next.js": "Web Dev & Frontend",
+    "cli/cli": "Dev Tools & CLI"
+  }
+}

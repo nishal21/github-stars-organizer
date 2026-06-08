@@ -1,0 +1,9 @@
+[github]
+username = "your-github-username"
+token = "ghp_xxxx"           # Personal access token (classic)
+
+[github.session]
+# DevTools → Network → any github.com request → Headers → Cookie (full string)
+cookies = "_octo=...; user_session=...; logged_in=yes; ..."
+
+concurrency = 5

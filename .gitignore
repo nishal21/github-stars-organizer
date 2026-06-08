@@ -1,0 +1,24 @@
+# Secrets
+config.toml
+*.local.json
+
+# User-generated plans (keep examples/ only)
+categorization-plan.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+dist/
+build/
+.uv/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Legacy vendored clone
+tool/
