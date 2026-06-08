@@ -102,17 +102,25 @@ async def apply_plan(
     web = GitHubWebClient(cfg.github)
     try:
         existing_lists = await web.get_lists(repos[0])
-        list_name_to_id = {item.name: item.id for item in existing_lists}
-        for name in state.lists_created:
-            for item in existing_lists:
-                if item.name == name:
-                    list_name_to_id[item.name] = item.id
+        list_name_to_id = {
+            item.name: item.id
+            for item in existing_lists
+            if str(item.id).isdigit()
+        }
 
-        if result.new_lists:
-            console.print(f"\nCreating {len(result.new_lists)} lists...")
-            for name in result.new_lists:
-                if name in list_name_to_id:
-                    continue
+        if existing_lists:
+            console.print(f"Found {len(existing_lists)} existing Star Lists on GitHub.")
+
+        to_create = [
+            name
+            for name in result.new_lists
+            if name not in list_name_to_id
+            and name.lower() not in {k.lower() for k in list_name_to_id}
+        ]
+
+        if to_create:
+            console.print(f"\nCreating {len(to_create)} lists...")
+            for name in to_create:
                 created = await web.create_list(name, repos[0])
                 if created:
                     list_name_to_id[created.name] = created.id
@@ -121,6 +129,24 @@ async def apply_plan(
                     console.print(f"  [green]+[/green] {name}")
                 else:
                     console.print(f"  [red]![/red] Failed: {name}")
+
+        # Refresh IDs after creates
+        existing_lists = await web.get_lists(repos[0])
+        list_name_to_id = {
+            item.name: item.id
+            for item in existing_lists
+            if str(item.id).isdigit()
+        }
+
+        missing_lists = sorted({a.list_name for a in pending if a.list_name not in list_name_to_id})
+        if missing_lists:
+            console.print(
+                f"[red]Cannot assign repos — missing list IDs for: {', '.join(missing_lists[:5])}"
+                f"{'...' if len(missing_lists) > 5 else ''}[/red]"
+            )
+            console.print("Try: organize-stars lists   (should show lists with numeric ids)")
+            console.print("If empty, refresh your browser cookie in config.toml and retry.")
+            return
 
         console.print(f"\nAssigning {len(pending)} repos...")
         ok = len(already_assigned)

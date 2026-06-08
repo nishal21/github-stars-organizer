@@ -114,6 +114,92 @@ def _debug_dump(
     console.print(f"[bold red]{'=' * 60}[/bold red]\n")
 
 
+def _normalize_list_name(name: str) -> str:
+    name = re.sub(r"\s*\d+\s*repositor(?:y|ies)\s*$", "", name, flags=re.I)
+    return name.strip()
+
+
+def _parse_lists_from_buttons(soup: BeautifulSoup) -> list[StarList]:
+    """Parse GitHub's modern ActionList button UI for list IDs."""
+    lists: list[StarList] = []
+    seen: set[str] = set()
+
+    for btn in soup.find_all("button", attrs={"data-input-name": "list_ids[]"}):
+        list_id = btn.get("data-value", "")
+        if not list_id or not str(list_id).isdigit():
+            continue
+        if list_id in seen:
+            continue
+
+        label = btn.find("span", class_="ActionListItem-label")
+        name = label.get_text(" ", strip=True) if label else btn.get_text(" ", strip=True)
+        name = _normalize_list_name(name)
+        if name:
+            lists.append(StarList(id=str(list_id), name=name))
+            seen.add(list_id)
+
+    return lists
+
+
+def _parse_lists_from_checkboxes(soup: BeautifulSoup) -> list[StarList]:
+    """Legacy checkbox UI fallback."""
+    lists: list[StarList] = []
+    for checkbox in soup.find_all("input", {"type": "checkbox", "name": "list_ids[]"}):
+        list_id = checkbox.get("value", "")
+        if not list_id:
+            continue
+        label = checkbox.find_parent("label") or checkbox.find_next("label")
+        name = ""
+        if label:
+            truncate = label.find(class_="Truncate-text")
+            name = truncate.get_text(strip=True) if truncate else label.get_text(strip=True)
+        name = _normalize_list_name(name)
+        if name:
+            lists.append(StarList(id=str(list_id), name=name))
+    return lists
+
+
+def _parse_lists_from_html(html: str) -> list[StarList]:
+    soup = BeautifulSoup(html, "html.parser")
+    lists = _parse_lists_from_buttons(soup)
+    if lists:
+        return lists
+    return _parse_lists_from_checkboxes(soup)
+
+
+def _parse_profile_list_links(html: str, username: str) -> list[StarList]:
+    """Parse list names from the profile stars tab (no numeric IDs)."""
+    soup = BeautifulSoup(html, "html.parser")
+    pattern = re.compile(rf"^/stars/{re.escape(username)}/lists/([^/?#]+)$")
+    found: dict[str, StarList] = {}
+
+    for link in soup.find_all("a", href=True):
+        match = pattern.match(link["href"])
+        if not match:
+            continue
+        slug = match.group(1)
+        if slug in {"new", "edit"}:
+            continue
+        name = _normalize_list_name(link.get_text(strip=True) or slug)
+        if slug not in found:
+            found[slug] = StarList(id=slug, name=name)
+
+    return sorted(found.values(), key=lambda item: item.name.lower())
+
+
+def _merge_lists_by_name(id_lists: list[StarList], name_lists: list[StarList]) -> list[StarList]:
+    """Combine ID-bearing lists with profile lists, matching by name."""
+    by_name = {item.name.lower(): item for item in id_lists}
+    merged = list(id_lists)
+
+    for item in name_lists:
+        key = item.name.lower()
+        if key not in by_name:
+            merged.append(item)
+
+    return sorted(merged, key=lambda item: item.name.lower())
+
+
 def _extract_csrf_token(html: str, action_url: str | None = None) -> str:
     soup = BeautifulSoup(html, "html.parser")
 
@@ -130,15 +216,41 @@ def _extract_csrf_token(html: str, action_url: str | None = None) -> str:
     raise ValueError("Could not find CSRF token. Session cookie may be expired.")
 
 
+async def fetch_profile_star_lists(
+    client: httpx.AsyncClient,
+    cfg: GitHubConfig,
+) -> list[StarList]:
+    """Fetch list names from the user's stars profile page."""
+    url = (
+        f"https://github.com/{cfg.username}?tab=stars"
+        "&user_lists_direction=desc&user_lists_sort=created_at"
+    )
+    headers = {
+        **_BROWSER_HEADERS,
+        "Accept": "text/html, application/xhtml+xml",
+        "Turbo-Frame": "user-profile-frame",
+        "Referer": f"https://github.com/{cfg.username}?tab=stars",
+    }
+    cookies = _build_cookies(cfg)
+
+    resp = await client.get(url, headers=headers, cookies=cookies, follow_redirects=True)
+    if resp.status_code != 200:
+        curl = _to_curl("GET", url, headers, cookies)
+        _debug_dump("fetch_profile_star_lists failed", resp, curl_cmd=curl)
+        return []
+
+    return _parse_profile_list_links(resp.text, cfg.username)
+
+
 async def fetch_star_lists(
     client: httpx.AsyncClient,
     cfg: GitHubConfig,
     repo: StarredRepo,
 ) -> tuple[list[StarList], str]:
-    url = f"https://github.com/{repo.full_name}/lists"
+    url = f"https://github.com/{repo.full_name}/lists?experimental=1"
     headers = {
         **_BROWSER_HEADERS,
-        "Accept": "text/html",
+        "Accept": "text/fragment+html",
         "Referer": f"https://github.com/{repo.full_name}",
         "X-Requested-With": "XMLHttpRequest",
     }
@@ -149,25 +261,23 @@ async def fetch_star_lists(
     if resp.status_code != 200:
         curl = _to_curl("GET", url, headers, cookies)
         _debug_dump("fetch_star_lists failed", resp, curl_cmd=curl)
-    resp.raise_for_status()
+        resp.raise_for_status()
 
     html = resp.text
-    csrf_token = _extract_csrf_token(html)
+    try:
+        csrf_token = _extract_csrf_token(html)
+    except ValueError:
+        csrf_token = ""
 
-    soup = BeautifulSoup(html, "html.parser")
-    lists: list[StarList] = []
+    lists = _parse_lists_from_html(html)
 
-    for checkbox in soup.find_all("input", {"type": "checkbox", "name": "list_ids[]"}):
-        list_id = checkbox.get("value", "")
-        if not list_id:
-            continue
-        label = checkbox.find_parent("label") or checkbox.find_next("label")
-        name = ""
-        if label:
-            truncate = label.find(class_="Truncate-text")
-            name = truncate.get_text(strip=True) if truncate else label.get_text(strip=True)
-        if name:
-            lists.append(StarList(id=list_id, name=name))
+    if not lists:
+        profile_lists = await fetch_profile_star_lists(client, cfg)
+        return profile_lists, csrf_token
+
+    profile_lists = await fetch_profile_star_lists(client, cfg)
+    if profile_lists:
+        lists = _merge_lists_by_name(lists, profile_lists)
 
     return lists, csrf_token
 
@@ -177,10 +287,10 @@ async def fetch_repo_list_state(
     cfg: GitHubConfig,
     repo: StarredRepo,
 ) -> tuple[list[str], str]:
-    url = f"https://github.com/{repo.full_name}/lists"
+    url = f"https://github.com/{repo.full_name}/lists?experimental=1"
     headers = {
         **_BROWSER_HEADERS,
-        "Accept": "text/html",
+        "Accept": "text/fragment+html",
         "Referer": f"https://github.com/{repo.full_name}",
         "X-Requested-With": "XMLHttpRequest",
     }
@@ -195,13 +305,23 @@ async def fetch_repo_list_state(
 
     html = resp.text
     csrf_token = _extract_csrf_token(html)
-
     soup = BeautifulSoup(html, "html.parser")
+
     checked_ids: list[str] = []
-    for checkbox in soup.find_all("input", {"type": "checkbox", "name": "list_ids[]", "checked": True}):
-        val = checkbox.get("value", "")
-        if val:
-            checked_ids.append(val)
+    for btn in soup.find_all("button", attrs={"data-input-name": "list_ids[]"}):
+        if btn.get("aria-selected") == "true":
+            val = btn.get("data-value", "")
+            if val:
+                checked_ids.append(str(val))
+
+    if not checked_ids:
+        for checkbox in soup.find_all(
+            "input", {"type": "checkbox", "name": "list_ids[]", "checked": True}
+        ):
+            val = checkbox.get("value", "")
+            if val:
+                checked_ids.append(str(val))
+
     return checked_ids, csrf_token
 
 
@@ -291,6 +411,7 @@ async def assign_repo_to_lists(
         ("authenticity_token", (None, csrf_token)),
         ("repository_id", (None, str(repo.id))),
         ("context", (None, "user_list_menu")),
+        ("user_list_menu_dirty", (None, "1")),
         ("list_ids[]", (None, "")),
     ]
     for lid in list_ids:
@@ -325,11 +446,40 @@ class GitHubWebClient:
     async def close(self) -> None:
         await self.client.aclose()
 
-    async def get_lists(self, any_repo: StarredRepo) -> list[StarList]:
-        self._lists, _ = await fetch_star_lists(self.client, self.cfg, any_repo)
+    async def get_lists(self, any_repo: StarredRepo | None = None) -> list[StarList]:
+        if any_repo is not None:
+            self._lists, _ = await fetch_star_lists(self.client, self.cfg, any_repo)
+            if self._lists and all(sl.id.isdigit() for sl in self._lists):
+                return self._lists
+
+        profile_lists = await fetch_profile_star_lists(self.client, self.cfg)
+        if any_repo is not None:
+            repo_lists, _ = await fetch_star_lists(self.client, self.cfg, any_repo)
+            id_by_name = {
+                sl.name.lower(): sl.id for sl in repo_lists if sl.id.isdigit()
+            }
+            resolved: list[StarList] = []
+            for item in profile_lists:
+                list_id = id_by_name.get(item.name.lower(), item.id)
+                resolved.append(StarList(id=list_id, name=item.name))
+            self._lists = resolved or repo_lists or profile_lists
+        else:
+            self._lists = profile_lists
+
         return self._lists
 
+    def _find_list_by_name(self, name: str) -> StarList | None:
+        target = name.strip().lower()
+        for item in self._lists:
+            if item.name.strip().lower() == target:
+                return item
+        return None
+
     async def create_list(self, name: str, any_repo: StarredRepo) -> StarList | None:
+        existing = self._find_list_by_name(name)
+        if existing and existing.id.isdigit():
+            return existing
+
         csrf = await _fetch_create_list_csrf(self.client, self.cfg)
         await asyncio.sleep(self._delay)
 
@@ -339,10 +489,10 @@ class GitHubWebClient:
         if slug is None:
             return None
 
-        self._lists, _ = await fetch_star_lists(self.client, self.cfg, any_repo)
-        for sl in self._lists:
-            if sl.name == name:
-                return sl
+        await self.get_lists(any_repo)
+        created = self._find_list_by_name(name)
+        if created and created.id.isdigit():
+            return created
 
         console.print(f"[yellow]Created list '{name}' but couldn't find its ID[/yellow]")
         return None

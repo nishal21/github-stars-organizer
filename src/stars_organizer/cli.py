@@ -178,18 +178,17 @@ def _cmd_lists(args: argparse.Namespace) -> None:
     async def run() -> None:
         cfg = load_config(Path(args.config))
         repos = await fetch_starred_repos(cfg.github)
-        if not repos:
-            console.print("[red]No starred repos found.[/red]")
-            sys.exit(1)
 
         web = GitHubWebClient(cfg.github)
         try:
-            lists = await web.get_lists(repos[0])
+            probe = repos[0] if repos else None
+            lists = await web.get_lists(probe)
             if not lists:
                 console.print("No Star Lists yet.")
                 return
             for item in lists:
-                console.print(f"  - {item.name} (id: {item.id})")
+                id_label = item.id if str(item.id).isdigit() else f"slug:{item.id}"
+                console.print(f"  - {item.name} (id: {id_label})")
         finally:
             await web.close()
 
