@@ -15,10 +15,14 @@ Add topics on GitHub: `github`, `cli`, `python`, `stars`, `productivity`, `open-
 ## Dogfood (organize your stars)
 
 ```bash
-organize-stars init
-organize-stars plan --username nishal21
-organize-stars apply --dry-run
-organize-stars apply
+# If `organize-stars` is not found on Windows after pip install, use:
+python -m stars_organizer init
+python -m stars_organizer plan --username nishal21
+python -m stars_organizer apply --dry-run
+python -m stars_organizer apply
+
+# Or from this repo with uv:
+uv run organize-stars init
 ```
 
 Screenshot https://github.com/nishal21?tab=stars and add to README.

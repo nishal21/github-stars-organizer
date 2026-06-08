@@ -34,6 +34,15 @@ pip install github-stars-organizer
 
 Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/) (recommended).
 
+**Windows note:** If `pip install` says scripts are not on PATH, either add  
+`%APPDATA%\Python\Python313\Scripts` to your PATH, or run:
+
+```bash
+python -m stars_organizer init
+```
+
+From the project folder you can also use: `uv run organize-stars init`
+
 ## Quick start
 
 ### 1. Build a plan (no credentials needed)
