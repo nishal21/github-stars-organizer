@@ -1,33 +1,19 @@
 # Learning Journal
 
-## GitHub Star Lists
+## Repo location
 
-- Profile → **Stars** tab; ~32 lists max per user
-- Official REST API: star/unstar only — **no lists API**
-- Lists need browser cookie + CSRF (unofficial web endpoints)
+**Canonical project path:** `D:\Codesss\github-stars-organizer`
 
-## This tool (OSS)
+## Quick commands
 
-| Command | Purpose |
-|---------|---------|
-| `organize-stars plan --username X` | Fetch public stars → `categorization-plan.json` |
-| `organize-stars apply --dry-run` | Preview list creation |
-| `organize-stars apply` | Create lists + assign repos on GitHub |
+```bash
+cd D:\Codesss\github-stars-organizer
+uv sync --dev
+organize-stars plan --username nishal21
+organize-stars init
+organize-stars apply --dry-run
+```
 
-| File | Purpose |
-|------|---------|
-| `config.toml` | username, token, cookies (local, gitignored) |
-| `categorization-plan.json` | repo → list mapping (generated, gitignored) |
-| `src/stars_organizer/categorize.py` | keyword scoring rules |
-| `src/stars_organizer/github_web.py` | adapted from luoling8192 (MIT) |
+## Publish
 
-## Publish checklist
-
-1. Create repo on GitHub (e.g. `nishal21/github-stars-organizer`)
-2. `git add . && git commit -m "Initial release"`
-3. `git remote add origin git@github.com:USER/REPO.git`
-4. `git push -u origin main`
-
-## Cookie refresh
-
-CSRF/403 on apply → DevTools → Network → copy fresh Cookie from github.com.
+See [PUBLISH.md](PUBLISH.md) for GitHub + PyPI steps.

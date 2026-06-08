@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import httpx
 
 from .config import GitHubConfig
@@ -18,7 +20,7 @@ def _parse_repo(item: dict) -> StarredRepo:
 async def _fetch_pages(
     url: str,
     headers: dict[str, str],
-    on_page: callable | None = None,
+    on_page: Callable[[int, int], None] | None = None,
 ) -> list[StarredRepo]:
     repos: list[StarredRepo] = []
     async with httpx.AsyncClient(headers=headers, timeout=30) as client:
@@ -44,7 +46,7 @@ async def _fetch_pages(
 
 async def fetch_starred_repos(
     cfg: GitHubConfig,
-    on_page: callable | None = None,
+    on_page: Callable[[int, int], None] | None = None,
 ) -> list[StarredRepo]:
     """Fetch starred repos for the authenticated user (token required)."""
     headers = {
@@ -59,7 +61,7 @@ async def fetch_starred_repos(
 async def fetch_public_starred_repos(
     username: str,
     token: str | None = None,
-    on_page: callable | None = None,
+    on_page: Callable[[int, int], None] | None = None,
 ) -> list[StarredRepo]:
     """Fetch public starred repos for any GitHub user."""
     headers = {

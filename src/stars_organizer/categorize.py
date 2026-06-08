@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import tomllib
 from collections import defaultdict
 from pathlib import Path
 
@@ -50,10 +51,10 @@ CATEGORIES: dict[str, list[tuple[str, int]]] = {
     ],
 }
 
+# Tie-breakers only when multiple categories score equally (not fallback defaults).
 LANG_HINTS = {
     "typescript": "Web Dev & Frontend",
     "javascript": "Web Dev & Frontend",
-    "python": "AI & LLM",
     "go": "Go & Systems",
     "rust": "Go & Systems",
     "kotlin": "Mobile & Android",
@@ -64,7 +65,40 @@ LANG_HINTS = {
     "java": "Backend & APIs",
 }
 
+MAX_LISTS = 32
+
 DEFAULT_CATEGORY = "Misc & Tools"
+
+
+def load_categories(path: Path) -> dict[str, list[tuple[str, int]]]:
+    """Load custom category rules from a TOML file."""
+    with open(path, "rb") as f:
+        raw = tomllib.load(f)
+
+    categories: dict[str, list[tuple[str, int]]] = {}
+    for entry in raw.get("category", []):
+        name = entry["name"]
+        weight = int(entry.get("weight", 2))
+        patterns = entry.get("patterns", [])
+        # User patterns use substring match (e.g. "anime" matches "anime-api").
+        categories[name] = [(re.escape(pattern), weight) for pattern in patterns]
+    return categories
+
+
+def merge_categories(
+    custom: dict[str, list[tuple[str, int]]] | None = None,
+    *,
+    override: bool = False,
+) -> dict[str, list[tuple[str, int]]]:
+    """Merge custom categories with defaults. Custom rules are checked first."""
+    if not custom:
+        return dict(CATEGORIES)
+    if override:
+        return dict(custom)
+    merged = dict(CATEGORIES)
+    for name, patterns in custom.items():
+        merged[name] = patterns
+    return merged
 
 
 def _repo_text(repo: StarredRepo) -> str:
@@ -81,31 +115,47 @@ def _repo_text(repo: StarredRepo) -> str:
     ).lower()
 
 
-def categorize_repo(repo: StarredRepo) -> str:
+def categorize_repo(
+    repo: StarredRepo,
+    *,
+    categories: dict[str, list[tuple[str, int]]] | None = None,
+) -> str:
+    rules = categories or CATEGORIES
     text = _repo_text(repo)
     scores: dict[str, int] = defaultdict(int)
 
-    for category, patterns in CATEGORIES.items():
+    for category, patterns in rules.items():
         for pattern, weight in patterns:
             if re.search(pattern, text):
                 scores[category] += weight
 
-    lang = repo.language.lower() if repo.language else ""
-    if lang in LANG_HINTS and not scores:
-        scores[LANG_HINTS[lang]] += 1
-
     if not scores:
         return DEFAULT_CATEGORY
 
-    return max(scores.items(), key=lambda item: item[1])[0]
+    max_score = max(scores.values())
+    top = [cat for cat, score in scores.items() if score == max_score]
+
+    if len(top) == 1:
+        return top[0]
+
+    lang = repo.language.lower() if repo.language else ""
+    if lang in LANG_HINTS and LANG_HINTS[lang] in top:
+        return LANG_HINTS[lang]
+
+    return top[0]
 
 
-def build_plan(username: str, repos: list[StarredRepo]) -> dict:
+def build_plan(
+    username: str,
+    repos: list[StarredRepo],
+    *,
+    categories: dict[str, list[tuple[str, int]]] | None = None,
+) -> dict:
     assignments: dict[str, str] = {}
     by_list: dict[str, list[str]] = defaultdict(list)
 
     for repo in repos:
-        category = categorize_repo(repo)
+        category = categorize_repo(repo, categories=categories)
         assignments[repo.full_name] = category
         by_list[category].append(repo.full_name)
 
