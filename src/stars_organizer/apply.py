@@ -27,6 +27,13 @@ async def apply_plan(
     resume: bool = False,
     state_path: Path = DEFAULT_STATE_PATH,
 ) -> None:
+    if not plan_path.exists():
+        console.print(f"[red]Plan file not found: {plan_path}[/red]")
+        console.print("Create one first:")
+        console.print("  organize-stars plan --config config.toml")
+        console.print("  organize-stars plan --username YOUR_USERNAME")
+        return
+
     cfg = load_config(config_path)
     assignments_map = load_plan(plan_path)
 
