@@ -29,3 +29,5 @@ Thumbs.db
 
 # Legacy vendored clone
 tool/
+
+.cursor

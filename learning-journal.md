@@ -1,19 +1,9 @@
 # Learning Journal
 
-## Repo location
+## 2026-06-09 — graphify CLI not found on Windows
 
-**Canonical project path:** `D:\Codesss\github-stars-organizer`
-
-## Quick commands
-
-```bash
-cd D:\Codesss\github-stars-organizer
-uv sync --dev
-organize-stars plan --username nishal21
-organize-stars init
-organize-stars apply --dry-run
-```
-
-## Publish
-
-See [PUBLISH.md](PUBLISH.md) for GitHub + PyPI steps.
+- **Cause:** `pip install graphifyy` put `graphify.exe` in `C:\Users\hp\AppData\Roaming\Python\Python313\Scripts\`, which is **not** on PATH. PATH only had `C:\Python313\Scripts\`.
+- **Workaround:** Run `python -m graphify <command>` instead of `graphify <command>`.
+- **Fix (optional):** Add user Scripts to PATH, or reinstall globally: `python -m pip install --force-reinstall graphifyy`.
+- **Verified:** `python -m graphify install --platform cursor` wrote `.cursor/rules/graphify.mdc`.
+- **Next:** Run `/graphify .` in Cursor to build the knowledge graph for this repo.
