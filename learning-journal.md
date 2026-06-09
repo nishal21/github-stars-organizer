@@ -1,9 +1,13 @@
 # Learning Journal
 
+## 2026-06-09 — graphify graph built
+
+- **Command:** `python -m graphify update .` (AST-only, no API key needed).
+- **Result:** `graphify-out/` with 243 nodes, 539 edges, 18 communities.
+- **Query example:** `python -m graphify query "How does apply work?"` — BFS over `graph.json`.
+- **PATH:** Still use `python -m graphify` on Windows unless user Scripts dir is on PATH.
+- **Next:** Re-run `update .` after code changes; open `graphify-out/graph.html` for viz; continue star-list `apply` workflow.
+
 ## 2026-06-09 — graphify CLI not found on Windows
 
-- **Cause:** `pip install graphifyy` put `graphify.exe` in `C:\Users\hp\AppData\Roaming\Python\Python313\Scripts\`, which is **not** on PATH. PATH only had `C:\Python313\Scripts\`.
-- **Workaround:** Run `python -m graphify <command>` instead of `graphify <command>`.
-- **Fix (optional):** Add user Scripts to PATH, or reinstall globally: `python -m pip install --force-reinstall graphifyy`.
-- **Verified:** `python -m graphify install --platform cursor` wrote `.cursor/rules/graphify.mdc`.
-- **Next:** Run `/graphify .` in Cursor to build the knowledge graph for this repo.
+- **Workaround:** `python -m graphify <command>` instead of bare `graphify`.

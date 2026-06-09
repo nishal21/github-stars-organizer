@@ -1,7 +1,12 @@
 # Devlog
 
-## 2026-06-09
+## 2026-06-09 (graphify build)
 
-- Installed `graphifyy` 0.8.36; CLI entry point is `graphify` but Windows PATH missing user Scripts dir.
-- Used `python -m graphify install --platform cursor` successfully; rule at `.cursor/rules/graphify.mdc`.
-- **Next:** Build graph with `/graphify .`; use `python -m graphify` for all CLI commands until PATH is fixed.
+- Ran `python -m graphify update .` — **243 nodes, 539 edges, 18 communities** in `graphify-out/`.
+- Outputs: `graph.json`, `graph.html`, `GRAPH_REPORT.md`. Cursor rule already at `.cursor/rules/graphify.mdc`.
+- CLI: use `python -m graphify <cmd>` (Windows PATH lacks user Scripts dir).
+- **Next:** After code edits run `python -m graphify update .`; optional semantic pass with `extract .` if GEMINI/OPENAI key set. Resume `organize-stars lists` + `apply` for star assignment.
+
+## 2026-06-09 (setup)
+
+- Installed `graphifyy` 0.8.36; used `python -m graphify install --platform cursor`.
